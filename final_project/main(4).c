@@ -12,28 +12,6 @@
 unsigned int CurrentValueY = 0;
 unsigned int CurrentValueX = 0;
 
-/*unsigned int ADCRead2(void)
-{
-    ADC12CTL0 |= ADC12ENC | ADC12SC;        //Start sampling/conversion
-    while(!(ADC12IFGR2 & ADC12IFG2));
-    return ADC12MEM2;
-}
-
-unsigned int ADCRead1(void)
-{
-    ADC12CTL0 &= ~(ADC12ENC + ADC12SC);
-    ADC12CTL0 |= ADC12ENC + ADC12SC;        //Start sampling/conversion
-    while(!(ADC12IFGR0 & ADC12IFG1));
-    return ADC12MEM1;
-}
-
-unsigned int ADCRead0(void)
-{
-    ADC12CTL0 &= ~(ADC12ENC + ADC12SC);
-    ADC12CTL0 |= ADC12ENC + ADC12SC;        //Start sampling/conversion
-    while(!(ADC12IFGR0 & ADC12IFG0));
-    return ADC12MEM0;
-}*/
 int UARTContrl = 1;
 unsigned int control = 0x00;
 void SteeringSet(void)
@@ -129,54 +107,31 @@ void SteeringSetAnalogXY(void)
     }
 }
 
-void SteeringSetAnalogX(void)
-{
-    if(CurrentValueX >= 0x0F00)
-    {
-        P9OUT |= BIT4;
-                    P4OUT |= BIT7;
-                    P2OUT = 0x10;
-                    P3OUT = 0x02;
-
-    } else if(CurrentValueX <= 0x0010)
-    {
-        P9OUT |= BIT4;
-                    P4OUT |= BIT7;
-                    P2OUT = 0x08;
-                    P3OUT = 0x01;
-
-    } else
-    {
-    P9OUT &= ~BIT4;
-    P4OUT &= ~BIT7;
-    }
-}
-
 int main(void)
 {
-    WDTCTL = WDTPW | WDTHOLD;             // stop watchdog timer
-    PM5CTL0 &= ~LOCKLPM5;                 // Disable GPIO default high-impedance mode
+    WDTCTL = WDTPW | WDTHOLD;           // stop watchdog timer
+    PM5CTL0 &= ~LOCKLPM5;               // Disable GPIO default high-impedance mode
     // GPIO Setup
-    P8SEL1 |= BIT6;                         // Configure P8.6 for ADC
+    P8SEL1 |= BIT6;                     // Configure P8.6 for ADC
     P8SEL0 |= BIT6;
-    P8SEL1 |= BIT5;                         // Configure P8.5 for ADC
+    P8SEL1 |= BIT5;                     // Configure P8.5 for ADC
     P8SEL0 |= BIT5;
-    //P8SEL1 |= BIT4;                         // Configure P8.4 for ADC
+    //P8SEL1 |= BIT4;                   // Configure P8.4 for ADC
     //P8SEL0 |= BIT4;
     P9DIR = BIT4;
-    P9REN = BIT4;
+    P9REN = BIT4;                       // Configure P9.4 which is an enable pin for the L293D
     P9OUT = BIT4;
-    P4DIR = BIT7;
+    P4DIR = BIT7;                       // Configure P4.7 which is an enable pin for the L293D
     P4REN = BIT7;
     P4OUT = BIT7;
-    P3DIR = BIT0 + BIT1;
+    P3DIR = BIT0 + BIT1;                // Configure P3.0 and P3.1 for the Motor control of the L293D
     P3REN = BIT0 + BIT1;
-    P2DIR = BIT3 + BIT4;                        // Set P1.0 LED to output
-    P3REN = BIT0 + BIT1;                        // Enables resistor for button P1.1
-    P3OUT = BIT0;                               // Makes resistor P1.1 a pull up
+    P2DIR = BIT3 + BIT4;                // Configure P2.3 and P2.4 for the Motor control of the L293D
+    P3REN = BIT0 + BIT1;
+    P3OUT = BIT0;
     P2REN = BIT3 + BIT4;
     P2OUT = BIT4;
-    P2SEL0 |= BIT0 | BIT1;                    // Configure UART pins
+    P2SEL0 |= BIT0 | BIT1;                  // Configure UART pins
     P2SEL1 &= ~(BIT0 | BIT1);
     // Configure ADC12
     ADC12CTL0 = ADC12SHT0_3 + ADC12ON;      // Sampling time, S&H=16, ADC12 on
@@ -215,11 +170,10 @@ P1OUT = BUTTON;
 P1IE |=  BUTTON;                           //enable interrupt on port 1.1
 P1IES |= BUTTON;                            //sets as falling edge
 P1IFG &=~(BUTTON);                     //clear interrupt flag
-//SteeringSet();
-    //enter LPM4 mode and enable global interrupt
+    //enable global interrupt
 _BIS_SR(GIE);
-while(1){
-while( UARTContrl == 1 ){
+while(1){                   // Sets while statement for UART Interrupt reading
+while( UARTContrl == 1 ){   // Sets while statement for ADC Reading
     __delay_cycles(5000);
     ADC12CTL0 |= ADC12ENC |ADC12SC;
     //CurrentValueX = ADCRead1();
@@ -259,14 +213,8 @@ __interrupt void USCI_A0_ISR(void)
               }
 }
 
-//#if defined(__TI_COMPILER_VERSION__) || defined(__IAR_SYSTEMS_ICC__)
 #pragma vector = ADC12_VECTOR
 __interrupt void ADC12_ISR(void)
-//#elif defined(__GNUC__)
-//void __attribute__ ((interrupt(ADC12_VECTOR))) ADC12_ISR (void)
-//#else
-//#error Compiler not supported!
-//#endif
 {
   switch (__even_in_range(ADC12IV, ADC12IV_ADC12RDYIFG))
   {
